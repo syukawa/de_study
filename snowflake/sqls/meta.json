@@ -1,0 +1,54 @@
+{
+  "dataset_name": "snow_shoji_training",
+  "instruction": "# 演習データ生成プロンプト\r\n\r\n外部の生成AIサイトに、下の「プロンプト本文」をそのまま貼り付けて使います。\r\n\r\n---\r\n\r\n## プロンプト本文\r\n\r\n````text\r\n架空の小売企業「スノー商事」のデータ基盤研修で使うテーブルデータを作成してください。\r\n以下のテーブル設計に従い、各テーブルを CSV 形式（ヘッダー行あり、UTF-8）で出力してください。\r\n\r\n# 会社の概要\r\n- 全国に実店舗50店と EC サイトを持つ小売企業。家電・キッチン用品・衣料・食品・日用品・インテリアを販売する。\r\n- データの期間は 2024-04-01〜2026-12-31。\r\n- 人名・住所・電話番号・メールアドレスはすべて架空のものにする。メールのドメインは example.com / example.jp / example.net のみ。\r\n\r\n# テーブル一覧\r\n\r\n| No | テーブル名 | 内容 | 行数の目安 |\r\n| --- | --- | --- | --- |\r\n| 1 | STORES | 店舗マスタ | 50 |\r\n| 2 | PRODUCTS | 商品マスタ | 500 |\r\n| 3 | CUSTOMERS | 顧客マスタ（個人情報を含む） | 20,000 |\r\n| 4 | EMPLOYEES | 社員マスタ | 120 |\r\n| 5 | AREA_ASSIGNMENTS | 営業のエリア担当履歴 | 20 |\r\n| 6 | CALENDAR_EVENTS | 祝日・セール・キャンペーンのカレンダー | 150 |\r\n| 7 | SALES_ORDERS | 売上明細（店舗・EC・アプリ） | 1,000,000 |\r\n| 8 | SHIPMENTS | 配送実績（EC・アプリの注文） | 450,000 |\r\n| 9 | WEB_EVENTS | EC サイトのアクセスログ（JSON） | 500,000 |\r\n| 10 | INQUIRIES | お客様からの問い合わせ | 3,000 |\r\n| 11 | EVENT_ATTENDEES | 店頭イベントの来場者 | 1,500 |\r\n\r\n# テーブルの関係\r\n\r\n- SALES_ORDERS.STORE_ID → STORES.STORE_ID\r\n- SALES_ORDERS.CUSTOMER_ID → CUSTOMERS.CUSTOMER_ID\r\n- SALES_ORDERS.PRODUCT_ID → PRODUCTS.PRODUCT_ID\r\n- SHIPMENTS.ORDER_ID → SALES_ORDERS.ORDER_ID（CHANNEL が EC / APP の注文のみ、1対1）\r\n- CUSTOMERS.HOME_STORE_ID → STORES.STORE_ID\r\n- WEB_EVENTS の user.customer_id → CUSTOMERS.CUSTOMER_ID、items[].product_id → PRODUCTS.PRODUCT_ID\r\n- INQUIRIES.CUSTOMER_ID / ORDER_ID / PRODUCT_ID → 各テーブル\r\n- EVENT_ATTENDEES.STORE_ID → STORES.STORE_ID（来場者の約70%は CUSTOMERS と同じメールアドレスの既存顧客）\r\n- AREA_ASSIGNMENTS.EMPLOYEE_ID → EMPLOYEES.EMPLOYEE_ID\r\n\r\n# テーブル定義\r\n\r\n## 1. STORES（店舗マスタ）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| STORE_ID | VARCHAR(4) | PK | S001〜S050 |\r\n| STORE_NAME | VARCHAR | | スノー商事 新宿店 |\r\n| REGION | VARCHAR | | S001〜S015=関東、S016〜S025=関西、S026〜S035=中部、S036〜S042=九州、S043〜S050=東北 |\r\n| PREFECTURE | VARCHAR | | REGION と矛盾しない都道府県 |\r\n| CITY | VARCHAR | | 市区町村 |\r\n| STORE_TYPE | VARCHAR | | 路面店 / ショッピングセンター / 駅ビル |\r\n| FLOOR_AREA_SQM | NUMBER | | 売場面積（300〜3000） |\r\n| OPEN_DATE | DATE | | 開店日 |\r\n| CLOSE_DATE | DATE | | 閉店日（営業中は空） |\r\n\r\n## 2. PRODUCTS（商品マスタ）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| PRODUCT_ID | VARCHAR(5) | PK | P0001〜P0500 |\r\n| PRODUCT_NAME | VARCHAR | | P0001=ワイヤレスイヤホン SNOW BUDS、P0002=電気ケトル SNOW KETTLE 1.0L、P0003=ダウンジャケット SNOW DOWN（固定）。ほかはカテゴリに合った商品名 |\r\n| CATEGORY_L | VARCHAR | | 家電 / キッチン / 衣料 / 食品 / 日用品 / インテリア |\r\n| CATEGORY_M | VARCHAR | | 中分類（例：オーディオ、調理家電、アウター） |\r\n| TAX_RATE | NUMBER(3,2) | | 0.10。食品のみ 0.08 |\r\n| LIST_PRICE | NUMBER | | 税込の定価（円） |\r\n| COST_PRICE | NUMBER | | 税抜の原価（円） |\r\n| LAUNCH_DATE | DATE | | 発売日 |\r\n| DISCONTINUED_DATE | DATE | | 販売終了日（販売中は空） |\r\n| EC_ONLY | VARCHAR(1) | | Y / N |\r\n\r\n## 3. CUSTOMERS（顧客マスタ）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| CUSTOMER_ID | VARCHAR(7) | PK | C000001〜C020000 |\r\n| FULL_NAME | VARCHAR | | 佐藤 花子 |\r\n| FULL_NAME_KANA | VARCHAR | | サトウ ハナコ |\r\n| EMAIL | VARCHAR | | user000001@example.com |\r\n| PHONE | VARCHAR | | 090-1234-5678 |\r\n| POSTAL_CODE | VARCHAR | | 160-0022 |\r\n| PREFECTURE | VARCHAR | | 東京都 |\r\n| ADDRESS_LINE | VARCHAR | | 市区町村以下の架空の住所 |\r\n| BIRTH_DATE | DATE | | 18〜80歳 |\r\n| GENDER | VARCHAR(1) | | M / F / U |\r\n| REGISTERED_AT | TIMESTAMP | | 会員登録日時 |\r\n| MEMBER_RANK | VARCHAR | | REGULAR / SILVER / GOLD |\r\n| MAIL_OPT_IN | VARCHAR(1) | | Y / N（メール配信の同意） |\r\n| HOME_STORE_ID | VARCHAR(4) | FK | よく利用する店舗 |\r\n| STATUS | VARCHAR | | ACTIVE / WITHDRAWN（退会） |\r\n| UPDATED_AT | TIMESTAMP | | 最終更新日時 |\r\n\r\n## 4. EMPLOYEES（社員マスタ）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| EMPLOYEE_ID | VARCHAR(5) | PK | E0001〜 |\r\n| FULL_NAME | VARCHAR | | 北村 浩 |\r\n| EMAIL | VARCHAR | | e0001@example.jp |\r\n| DEPARTMENT | VARCHAR | | 情報システム部 / 経営企画部 / マーケティング部 / 営業本部 / カスタマーサポート部 / 経理部 / 情報セキュリティ室 / EC事業部 / 店舗運営部 |\r\n| TITLE | VARCHAR | | 部長 / マネージャー / リーダー / 担当 |\r\n| HIRE_DATE | DATE | | 入社日 |\r\n| RETIRE_DATE | DATE | | 退職日（在籍中は空） |\r\n\r\n※ 次の人物を含める：北村（情報システム部 部長）、佐伯（情報システム部）、高田（経営企画部）、森（マーケティング部）、石井（情報セキュリティ室）、野口（経理部）、中川（EC事業部）、小池（営業本部 東日本エリアマネージャー）、大野（カスタマーサポート部 リーダー）\r\n\r\n## 5. AREA_ASSIGNMENTS（エリア担当履歴）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| EMPLOYEE_ID | VARCHAR(5) | PK, FK | 営業本部の社員 |\r\n| REGION | VARCHAR | PK | 関東 / 関西 / 中部 / 九州 / 東北 |\r\n| VALID_FROM | DATE | PK | 担当開始日 |\r\n| VALID_TO | DATE | | 担当終了日（担当中は空） |\r\n\r\n※ 小池さんは関東・東北を担当し、2026-10-01 から中部も担当する。\r\n\r\n## 6. CALENDAR_EVENTS（祝日・販促カレンダー）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| EVENT_DATE | DATE | PK | 2026-09-21 |\r\n| EVENT_TYPE | VARCHAR | PK | HOLIDAY / SALE / CAMPAIGN / INCIDENT |\r\n| EVENT_NAME | VARCHAR | | 敬老の日 / 夏のボーナスセール / TVCM 放映 / EC システム障害 |\r\n| CHANNEL | VARCHAR | | ALL / EC / STORE |\r\n\r\n※ 2024〜2026年の日本の祝日を正確に入れる。\r\n\r\n## 7. SALES_ORDERS（売上明細）\r\n1行＝1注文の1商品。列の順番もこのとおりにする。\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| ORDER_ID | VARCHAR(11) | PK | ORD00000001 |\r\n| ORDER_DATE | DATE | | 2026-05-01 |\r\n| STORE_ID | VARCHAR(4) | FK | 実店舗はその店舗。EC / APP は顧客の HOME_STORE_ID |\r\n| CHANNEL | VARCHAR | | STORE / EC / APP（APP は 2026-07-01 から） |\r\n| CUSTOMER_ID | VARCHAR(7) | FK | 必ず値を入れる |\r\n| PRODUCT_ID | VARCHAR(5) | FK | |\r\n| QUANTITY | NUMBER | | 1〜5 |\r\n| UNIT_PRICE | NUMBER | | 税込の販売単価（円） |\r\n\r\n※ 曜日（週末は店舗が多い）、季節（夏・年末に山）、祝日・セールによる変動を付ける。EC と APP の合計は全体の約40%。\r\n\r\n## 8. SHIPMENTS（配送実績）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| SHIPMENT_ID | VARCHAR(11) | PK | SHP00000001 |\r\n| ORDER_ID | VARCHAR(11) | FK | EC / APP の注文 |\r\n| SHIPPED_DATE | DATE | | 注文の0〜2日後 |\r\n| DELIVERED_DATE | DATE | | 出荷の1〜3日後 |\r\n| CARRIER | VARCHAR | | 架空の配送会社（3社程度） |\r\n| DELIVERY_PREFECTURE | VARCHAR | | 届け先の都道府県 |\r\n| SHIPPING_FEE | NUMBER | | 税込。注文金額 5,000円以上は0円、未満は550円（2026-10-01 以降は基準が7,000円） |\r\n\r\n## 9. WEB_EVENTS（EC アクセスログ）\r\n1行に1つの JSON（JSON Lines 形式）。期間は直近180日。\r\n```json\r\n{\"event_id\":\"<UUID>\",\"event_ts\":\"2026-05-01T10:15:30\",\"event_type\":\"page_view\",\r\n \"session_id\":\"<UUID>\",\r\n \"user\":{\"customer_id\":\"C001234\",\"device\":\"sp\"},\r\n \"page\":{\"url\":\"/products/P0123\",\"referrer\":\"search\"},\r\n \"items\":[{\"product_id\":\"P0123\",\"qty\":1}]}\r\n```\r\n| キー | 説明・値の例 |\r\n| --- | --- |\r\n| event_type | page_view / search / add_to_cart / purchase |\r\n| user.customer_id | 非会員の閲覧は null |\r\n| user.device | pc / sp / tablet |\r\n| page.referrer | search / sns / direct / mail |\r\n| items | add_to_cart と purchase のときだけ1〜3件、それ以外は空配列 |\r\n| search_query | event_type が search のときだけ、日本語の検索語 |\r\n\r\n## 10. INQUIRIES（問い合わせ）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| INQUIRY_ID | VARCHAR(8) | PK | INQ00001 |\r\n| RECEIVED_AT | TIMESTAMP | | 2026年の受付日時 |\r\n| CUSTOMER_ID | VARCHAR(7) | FK | |\r\n| ORDER_ID | VARCHAR(11) | FK | 注文に関する問い合わせのみ（ほかは空） |\r\n| PRODUCT_ID | VARCHAR(5) | FK | |\r\n| CHANNEL | VARCHAR | | STORE / EC / APP |\r\n| CONTACT_METHOD | VARCHAR | | mail / form / phone / chat |\r\n| INQUIRY_TEXT | VARCHAR | | 100〜300字の自然な日本語の問い合わせ本文。言い回しに変化を付ける |\r\n| TOPIC | VARCHAR | | 配送の遅れ / 商品の破損 / 返品・交換 / サイズ・仕様の質問 / 支払い / 店舗スタッフの対応 / ポイント（本文と一致させる） |\r\n| TONE | VARCHAR | | 怒っている / 困っている / 落ち着いている / 感謝している（本文と一致させる） |\r\n| STATUS | VARCHAR | | OPEN / CLOSED |\r\n| CLOSED_AT | TIMESTAMP | | 対応完了日時 |\r\n\r\n## 11. EVENT_ATTENDEES（店頭イベントの来場者）\r\n| 列名 | 型 | キー | 説明・値の例 |\r\n| --- | --- | --- | --- |\r\n| ATTENDEE_ID | VARCHAR(8) | PK | ATT00001 |\r\n| EVENT_NAME | VARCHAR | | 春の新生活フェア |\r\n| EVENT_DATE | DATE | | 2026年のイベント開催日 |\r\n| STORE_ID | VARCHAR(4) | FK | 開催店舗 |\r\n| FULL_NAME | VARCHAR | | |\r\n| EMAIL | VARCHAR | | |\r\n| PREFECTURE | VARCHAR | | |\r\n| SURVEY_SCORE | NUMBER | | 1〜5 |\r\n\r\n# 出力のルール\r\n- 外部キーは必ず参照先に存在する値にする。\r\n- 日付は YYYY-MM-DD、日時は YYYY-MM-DD HH:MM:SS（日本時間）。\r\n- 行数が多いテーブルは、まず各テーブル20行ずつのサンプルを出力し、その後、全件を生成する方法（ファイルのダウンロード、または生成用のコード）を提示してください。\r\n````",
+  "created_at": "2026-09-28 16:40",
+  "tables": [
+    {
+      "name": "stores",
+      "rows": 50
+    },
+    {
+      "name": "products",
+      "rows": 700
+    },
+    {
+      "name": "employees",
+      "rows": 131
+    },
+    {
+      "name": "customers",
+      "rows": 20000
+    },
+    {
+      "name": "area_assignments",
+      "rows": 26
+    },
+    {
+      "name": "calendar_events",
+      "rows": 150
+    },
+    {
+      "name": "sales_orders",
+      "rows": 1000000
+    },
+    {
+      "name": "shipments",
+      "rows": 450000
+    },
+    {
+      "name": "web_events",
+      "rows": 500000
+    },
+    {
+      "name": "inquiries",
+      "rows": 3000
+    },
+    {
+      "name": "event_attendees",
+      "rows": 1500
+    }
+  ],
+  "total_rows": 1975557,
+  "cost": 1.00942,
+  "confirm": false
+}

@@ -1,0 +1,17 @@
+# macOS
+.DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Editors
+.idea/
+.vscode/
+*.swp
+
+# 生成物（snowflake/site/build.py の出力）
+snowflake/dist/

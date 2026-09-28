@@ -1,0 +1,156 @@
+erDiagram
+    stores {
+        string store_id PK
+        string region
+        string prefecture
+        string city
+        string store_name
+        string store_type
+        int floor_area_sqm
+        date open_date
+        date close_date
+    }
+    products {
+        string product_id PK
+        string category_l
+        string category_m
+        string product_name
+        float tax_rate
+        int list_price
+        int cost_price
+        date launch_date
+        date discontinued_date
+        string ec_only
+    }
+    employees {
+        string employee_id PK
+        string last_name
+        string first_name
+        string full_name
+        string email
+        string department
+        string title
+        date hire_date
+        date retire_date
+    }
+    customers {
+        string customer_id PK
+        string last_name
+        string first_name
+        string full_name
+        string full_name_kana
+        string email
+        string phone
+        string postal_code
+        string prefecture
+        string address_line
+        date birth_date
+        string gender
+        datetime registered_at
+        string member_rank
+        string mail_opt_in
+        string home_store_id FK
+        string status
+        string merged_into
+        datetime updated_at
+    }
+    area_assignments {
+        string employee_id PK
+        string region PK
+        date valid_from PK
+        date valid_to
+    }
+    calendar_events {
+        date event_date PK
+        string event_type PK
+        string event_name
+        string channel
+    }
+    sales_orders {
+        string order_id PK
+        date order_date
+        string store_id FK
+        string channel
+        string customer_id FK
+        string product_id FK
+        int quantity
+        int unit_price
+        datetime order_ts
+        int point_used
+        string source_file
+    }
+    shipments {
+        string shipment_id PK
+        string order_id FK
+        date shipped_date
+        date delivered_date
+        string carrier
+        string delivery_prefecture
+        int shipping_fee
+    }
+    web_events {
+        string event_id PK
+        datetime event_ts
+        string event_type
+        string session_id
+        string customer_id FK
+        string device
+        string device_type
+        string app_version
+        string viewed_product_id FK
+        string page_url
+        string page_referrer
+        string search_query
+        int item_count
+        string item1_product_id FK
+        int item1_qty
+        string item2_product_id FK
+        int item2_qty
+        string item3_product_id FK
+        int item3_qty
+    }
+    inquiries {
+        string inquiry_id PK
+        datetime received_at
+        string customer_id FK
+        string order_id FK
+        string product_id FK
+        string channel
+        string contact_method
+        string inquiry_text
+        string topic
+        string tone
+        string status
+        datetime closed_at
+        string contains_pii
+        string injection_flag
+    }
+    event_attendees {
+        string attendee_id PK
+        string event_name
+        date event_date
+        string store_id FK
+        string last_name
+        string first_name
+        string full_name
+        string email
+        string prefecture
+        int survey_score
+        string matched_customer_id FK
+        string email_variant_type
+    }
+    customers ||--o{ event_attendees : matched_customer_id
+    customers ||--o{ inquiries : customer_id
+    customers ||--o{ sales_orders : customer_id
+    customers ||--o{ web_events : customer_id
+    products ||--o{ inquiries : product_id
+    products ||--o{ sales_orders : product_id
+    products ||--o{ web_events : item1_product_id
+    products ||--o{ web_events : item2_product_id
+    products ||--o{ web_events : item3_product_id
+    products ||--o{ web_events : viewed_product_id
+    sales_orders ||--o{ inquiries : order_id
+    sales_orders ||--o{ shipments : order_id
+    stores ||--o{ customers : home_store_id
+    stores ||--o{ event_attendees : store_id
+    stores ||--o{ sales_orders : store_id
