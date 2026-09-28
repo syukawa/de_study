@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Snowflake アーキテクト育成 学習ガイド</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=Source+Code+Pro:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F8FA; --surface:#FFFFFF; --ink:#172A3D; --ink-2:#4A5D70; --line:#D6E1E9;
+  --accent:#1F6E9E; --accent-soft:#E3EFF6; --code-bg:#EDF2F6; --note:#8A5A12; --note-bg:#FBF3E4;
+  --phase-a:#1F6E9E; --phase-b:#2E7D6B; --phase-c:#6A4FA0;
+  --scene:#2E6A8E; --scene-bg:#EAF3F9; --case:#A2412B; --case-bg:#FBEEEA;
+  --font:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  --mono:"Source Code Pro","SFMono-Regular",Consolas,"BIZ UDGothic",monospace;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --bg:#0F1A24; --surface:#15222F; --ink:#E4ECF2; --ink-2:#A4B4C2; --line:#2A3B4B;
+  --accent:#7DB8DD; --accent-soft:#1D3345; --code-bg:#1B2A38; --note:#E8C07A; --note-bg:#2A2416;
+  --phase-a:#7DB8DD; --phase-b:#7CC6B3; --phase-c:#B9A3E3;
+  --scene:#8CC3E6; --scene-bg:#172B3A; --case:#F0A08C; --case-bg:#2E1D19; }}
+:root[data-theme="dark"]{
+  --bg:#0F1A24; --surface:#15222F; --ink:#E4ECF2; --ink-2:#A4B4C2; --line:#2A3B4B;
+  --accent:#7DB8DD; --accent-soft:#1D3345; --code-bg:#1B2A38; --note:#E8C07A; --note-bg:#2A2416;
+  --phase-a:#7DB8DD; --phase-b:#7CC6B3; --phase-c:#B9A3E3;
+  --scene:#8CC3E6; --scene-bg:#172B3A; --case:#F0A08C; --case-bg:#2E1D19; }
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 4.5rem);}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.85;
+  -webkit-text-size-adjust:100%;}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:19rem minmax(0,1fr);min-height:100vh}
+@media (min-width:1280px){.shell{grid-template-columns:19rem minmax(0,1fr) 16rem}}
+.rail{position:sticky;top:env(safe-area-inset-top,0px);height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;
+  background:var(--surface);border-right:1px solid var(--line);padding:1.5rem 1.25rem 2rem}
+.brand{font-weight:700;font-size:1.05rem;line-height:1.4;margin:0 0 .2rem}
+.brand-sub{color:var(--ink-2);font-size:.8rem;margin:0 0 1.2rem;line-height:1.5}
+.search{position:relative;margin-bottom:1.4rem}
+.search input{width:100%;font:inherit;font-size:.9rem;padding:.55rem .75rem;border:1px solid var(--line);border-radius:6px;
+  background:var(--bg);color:var(--ink)}
+.results{list-style:none;margin:.4rem 0 0;padding:0;max-height:50vh;overflow:auto}
+.results a{display:block;padding:.35rem .5rem;border-radius:4px;text-decoration:none;color:var(--ink);font-size:.85rem;line-height:1.45}
+.results a small{display:block;color:var(--ink-2);font-size:.72rem}
+.results a:hover,.results a:focus{background:var(--accent-soft)}
+
+/* the route: steps as a vertical path */
+.route{list-style:none;margin:0;padding:0;position:relative}
+.route .phase-label{font-size:.75rem;color:var(--ink-2);margin:1.1rem 0 .3rem 2.4rem;line-height:1.4}
+.route li.step{position:relative}
+.route li.step::before{content:"";position:absolute;left:.95rem;top:0;bottom:0;width:2px;background:var(--line)}
+.route li.step:first-of-type::before{top:1.2rem}
+.route li.step.last::before{bottom:calc(100% - 1.2rem)}
+.route a{display:grid;grid-template-columns:2rem 1fr;gap:.4rem;align-items:start;padding:.45rem .4rem .45rem 0;
+  text-decoration:none;color:var(--ink);border-radius:6px}
+.route .dot{position:relative;z-index:1;width:2rem;height:2rem;border-radius:50%;display:grid;place-items:center;
+  background:var(--surface);border:2px solid var(--pc,var(--ink-2));color:var(--pc,var(--ink-2));font-weight:700;font-size:.85rem}
+.route .t{font-size:.9rem;line-height:1.4;padding-top:.25rem}
+.route .t small{display:block;color:var(--ink-2);font-size:.72rem;line-height:1.45;margin-top:.1rem}
+.route a:hover .t{color:var(--accent)}
+.route a[aria-current="page"] .dot{background:var(--pc);color:var(--surface)}
+.route a[aria-current="page"] .t{font-weight:700}
+.rail-foot{margin-top:1.6rem;display:flex;gap:.5rem}
+.btn{font:inherit;font-size:.8rem;padding:.35rem .7rem;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.main{min-width:0;padding:2.5rem clamp(1rem,4vw,3.5rem) 5rem}
+.page-head{max-width:46rem;margin:0 0 2rem;padding-bottom:1.4rem;border-bottom:2px solid var(--pc,var(--accent))}
+.page-kicker{margin:0;color:var(--pc,var(--accent));font-weight:700;font-size:.95rem}
+.page-head h1{font-size:clamp(1.7rem,3.4vw,2.35rem);line-height:1.3;margin:.2rem 0 .4rem;letter-spacing:.01em}
+.page-sub{margin:0;color:var(--ink-2)}
+
+.toc{position:sticky;top:env(safe-area-inset-top,0px);height:calc(100vh - env(safe-area-inset-top,0px));overflow-y:auto;
+  padding:2.5rem 1.25rem 2rem .5rem;font-size:.8rem;line-height:1.5;display:none}
+@media (min-width:1280px){.toc{display:block}}
+.toc p{color:var(--ink-2);margin:0 0 .6rem;font-weight:700}
+.toc ul{list-style:none;margin:0;padding:0}
+.toc ul ul{padding-left:.8rem}
+.toc a{display:block;padding:.2rem 0 .2rem .6rem;border-left:2px solid transparent;color:var(--ink-2);text-decoration:none}
+.toc a:hover{color:var(--accent)}
+.toc a.on{color:var(--ink);border-left-color:var(--pc,var(--accent));font-weight:700}
+
+/* ---------- prose ---------- */
+.prose{max-width:46rem}
+.prose h2{font-size:1.5rem;line-height:1.4;margin:3.2rem 0 1rem;padding-top:.4rem}
+.prose h3{font-size:1.2rem;line-height:1.45;margin:2.4rem 0 .8rem;padding-left:.7rem;border-left:4px solid var(--pc,var(--accent))}
+.prose h4{font-size:1.02rem;margin:1.8rem 0 .5rem}
+.prose p,.prose li{max-width:40em}
+.prose hr{border:0;border-top:1px solid var(--line);margin:2.5rem 0}
+.prose ul,.prose ol{padding-left:1.4rem}
+.prose li{margin:.2rem 0}
+.prose blockquote{margin:1.2rem 0;padding:.8rem 1rem;background:var(--note-bg);border-left:4px solid var(--note);border-radius:0 6px 6px 0;color:var(--ink)}
+.prose blockquote p{margin:.3rem 0}
+.prose code{font-family:var(--mono);font-size:.86em;background:var(--code-bg);padding:.08em .35em;border-radius:4px}
+.codewrap{position:relative;margin:1.1rem 0}
+.prose pre{margin:0;background:var(--code-bg);border:1px solid var(--line);border-radius:8px;padding:1rem 1.1rem;overflow-x:auto;
+  font-size:.82rem;line-height:1.6}
+.prose pre code{background:none;padding:0;font-size:inherit}
+.copy{position:absolute;top:.45rem;right:.45rem;font:inherit;font-size:.72rem;padding:.2rem .55rem;border:1px solid var(--line);
+  border-radius:5px;background:var(--surface);color:var(--ink-2);cursor:pointer;opacity:.85}
+.copy:hover{color:var(--accent);border-color:var(--accent)}
+.tbl{overflow-x:auto;margin:1.2rem 0;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.prose table{border-collapse:collapse;width:100%;font-size:.88rem;line-height:1.6}
+.prose th,.prose td{padding:.55rem .75rem;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
+.prose th{background:var(--accent-soft);font-weight:700;white-space:nowrap}
+.prose tr:last-child td{border-bottom:0}
+.prose li.task-list-item{list-style:none;margin-left:-1.4rem}
+.prose li.task-list-item input{margin-right:.5rem;transform:translateY(1px);accent-color:var(--pc,var(--accent))}
+pre.mmd{background:var(--surface);text-align:center;border:1px solid var(--line);border-radius:8px;padding:1rem;overflow-x:auto;white-space:pre}
+pre.mmd[data-done]{white-space:normal}
+pre.mmd svg{max-width:100%;height:auto}
+
+.pager{max-width:46rem;display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--line)}
+.pager a{display:block;padding:.9rem 1rem;border:1px solid var(--line);border-radius:8px;text-decoration:none;color:var(--ink);background:var(--surface)}
+.pager a:hover{border-color:var(--accent)}
+.pager small{display:block;color:var(--ink-2);font-size:.75rem}
+.pager .next{text-align:right;grid-column:2}
+
+
+/* ---------- story & cases ---------- */
+.prose blockquote.callout{background:var(--scene-bg);border-left-color:var(--scene);padding:.9rem 1.1rem 1rem}
+.prose blockquote.callout.case{background:var(--case-bg);border-left-color:var(--case)}
+.callout-head{font-weight:700;display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;margin:0 0 .5rem!important;line-height:1.5}
+.chip{display:inline-block;font-size:.72rem;font-weight:700;line-height:1;padding:.3rem .55rem;border-radius:999px;
+  background:var(--scene);color:var(--surface);white-space:nowrap}
+.case .chip{background:var(--case)}
+.prose blockquote.callout p.line{display:grid;grid-template-columns:6.5em 1fr;gap:.6rem;margin:.35rem 0}
+.who{font-weight:700;color:var(--scene);font-size:.9rem;padding-top:.1em}
+.case .who{color:var(--case)}
+@media (max-width:560px){.prose blockquote.callout p.line{grid-template-columns:1fr;gap:0}}
+.prose h3.case-h{border-left-color:var(--case)}
+.prose h3.case-h::before{content:"CASE";display:inline-block;font-size:.68rem;letter-spacing:.08em;color:var(--case);
+  border:1px solid var(--case);border-radius:4px;padding:.05rem .35rem;margin-right:.5rem;vertical-align:.2em}
+.filters{display:flex;flex-wrap:wrap;gap:.4rem;margin:1.2rem 0}
+.filters .btn.on{background:var(--case);border-color:var(--case);color:var(--surface)}
+.case-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(15rem,1fr));gap:.8rem;max-width:60rem}
+.case-card{display:flex;flex-direction:column;gap:.35rem;padding:.9rem 1rem;border:1px solid var(--line);border-top:3px solid var(--pc);
+  border-radius:8px;background:var(--surface);color:var(--ink);text-decoration:none;line-height:1.5}
+.case-card:hover{border-color:var(--pc)}
+.case-card[hidden]{display:none}
+.case-id{font-family:var(--mono);font-size:.8rem;color:var(--pc);font-weight:600}
+.case-t{font-weight:700}
+.case-meta{display:flex;flex-wrap:wrap;gap:.4rem .7rem;font-size:.75rem;color:var(--ink-2);align-items:center;margin-top:auto}
+.case-card .chip{background:var(--ink-2)}
+
+/* ---------- mobile ---------- */
+.topbar{display:none}
+@media (max-width:900px){
+  .shell{grid-template-columns:1fr}
+  .topbar{display:flex;position:sticky;top:0;z-index:20;align-items:center;gap:.7rem;background:var(--surface);
+    border-bottom:1px solid var(--line);padding:.6rem 1rem;padding-top:calc(.6rem + env(safe-area-inset-top,0px));margin-top:calc(-1 * env(safe-area-inset-top,0px))}
+  .topbar strong{font-size:.95rem;line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rail{position:fixed;z-index:30;left:0;top:0;height:100%;width:min(20rem,86vw);transform:translateX(-102%);transition:transform .2s ease;
+    padding-top:calc(1.5rem + env(safe-area-inset-top,0px));padding-bottom:calc(2rem + env(safe-area-inset-bottom,0px))}
+  body.menu-open .rail{transform:none;box-shadow:0 0 0 100vmax rgba(0,0,0,.35)}
+  .main{padding-top:1.6rem}
+}
+@media (prefers-reduced-motion:reduce){.rail{transition:none}}
+@media print{.rail,.toc,.topbar,.copy,.pager{display:none!important}.shell{display:block}.page{display:block!important}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <button class="btn" id="menuBtn" aria-controls="rail" aria-expanded="false">目次</button>
+  <strong id="topTitle">学習ガイド</strong>
+</div>
+<div class="shell">
+  <aside class="rail" id="rail" aria-label="ステップ一覧">
+    <p class="brand">Snowflake アーキテクト育成<br>学習ガイド</p>
+    <p class="brand-sub">スノー商事のデータ＆AI基盤を、7つのステップで組み上げる</p>
+    <div class="search">
+      <label for="q" class="brand-sub" style="display:block;margin:0 0 .3rem">見出しを検索</label>
+      <input id="q" type="search" placeholder="例：Snowpipe、マスキング" autocomplete="off">
+      <ul class="results" id="results"></ul>
+    </div>
+    <ol class="route" id="route"></ol>
+    <div class="rail-foot">
+      <button class="btn" id="themeBtn" type="button">表示色を切り替え</button>
+    </div>
+  </aside>
+  <main class="main" id="main">
+<!--__PAGES__-->
+  </main>
+  <nav class="toc" id="toc" aria-label="このページの目次"></nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11.4.1/dist/mermaid.min.js"></script>
+<script>
+const NAV = /*__NAV__*/;
+const TOC = /*__TOC__*/;
+const PHASE = {A:{name:"フェーズA 土台づくり",v:"--phase-a"},B:{name:"フェーズB データ活用基盤",v:"--phase-b"},C:{name:"フェーズC AI活用",v:"--phase-c"}};
+const store = {
+  get(k){try{return localStorage.getItem(k)}catch(e){return null}},
+  set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+};
+
+/* theme */
+const savedTheme = store.get("theme"); if(savedTheme) document.documentElement.dataset.theme = savedTheme;
+document.getElementById("themeBtn").onclick = () => {
+  const dark = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim().toLowerCase() === "#0f1a24";
+  const t = dark ? "light" : "dark"; document.documentElement.dataset.theme = t; store.set("theme", t);
+  document.querySelectorAll("pre.mmd[data-done]").forEach(el=>{el.innerHTML=el.dataset.src;delete el.dataset.done;});
+  renderMermaid(currentKey);
+};
+
+/* route */
+const route = document.getElementById("route");
+let lastPhase = null;
+NAV.forEach((n,i) => {
+  if(n.phase && n.phase !== lastPhase){ const l=document.createElement("li"); l.className="phase-label"; l.textContent=PHASE[n.phase].name; route.appendChild(l); lastPhase=n.phase; }
+  const li=document.createElement("li"); li.className="step"+(i===NAV.length-1?" last":"");
+  const pc = n.phase ? `var(${PHASE[n.phase].v})` : "var(--ink-2)";
+  li.innerHTML = `<a href="#${n.key}" data-key="${n.key}" style="--pc:${pc}"><span class="dot">${n.key==="cases"?"例":(n.num||"★")}</span><span class="t">${n.title}<small>${n.sub}</small></span></a>`;
+  route.appendChild(li);
+});
+
+/* code copy buttons, checkbox persistence */
+document.querySelectorAll(".prose pre:not(.mmd)").forEach(pre => {
+  const w=document.createElement("div"); w.className="codewrap"; pre.parentNode.insertBefore(w,pre); w.appendChild(pre);
+  const b=document.createElement("button"); b.className="copy"; b.type="button"; b.textContent="コピー";
+  b.onclick=async()=>{ try{await navigator.clipboard.writeText(pre.innerText);b.textContent="コピーしました";}catch(e){b.textContent="選択してコピーしてください";} setTimeout(()=>b.textContent="コピー",1600); };
+  w.appendChild(b);
+});
+document.querySelectorAll(".page").forEach(pg => {
+  pg.querySelectorAll('li.task-list-item input[type="checkbox"]').forEach((cb,i) => {
+    const k=`chk:${pg.dataset.key}:${i}`; cb.disabled=false; cb.checked = store.get(k)==="1";
+    cb.onchange=()=>store.set(k, cb.checked?"1":"0");
+  });
+});
+
+/* mermaid */
+document.querySelectorAll("pre.mmd").forEach(el=>{el.dataset.src=el.innerHTML;});
+function renderMermaid(key){
+  if(!window.mermaid) return;
+  const dark = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim().toLowerCase() === "#0f1a24";
+  mermaid.initialize({startOnLoad:false, theme: dark?"dark":"neutral", securityLevel:"strict", fontFamily:"BIZ UDPGothic, sans-serif"});
+  const nodes=[...document.querySelectorAll(`#page-${key} pre.mmd:not([data-done])`)];
+  if(!nodes.length) return;
+  nodes.forEach(n=>n.dataset.done="1");
+  mermaid.run({nodes}).catch(()=>{});
+}
+
+/* pages & pager */
+NAV.forEach((n,i)=>{
+  const pager=document.querySelector(`.pager[data-key="${n.key}"]`); let h="";
+  if(i>0){const p=NAV[i-1]; h+=`<a class="prev" href="#${p.key}"><small>前へ</small>${p.num?("Step "+p.num+" "):""}${p.title}</a>`;}
+  if(i<NAV.length-1){const q=NAV[i+1]; h+=`<a class="next" href="#${q.key}"><small>次へ</small>${q.num?("Step "+q.num+" "):""}${q.title}</a>`;}
+  pager.innerHTML=h;
+});
+
+let currentKey=null, observer=null;
+function show(key, anchor){
+  if(!NAV.find(n=>n.key===key)) key="overview";
+  const n=NAV.find(x=>x.key===key);
+  const pc = n.phase ? `var(${PHASE[n.phase].v})` : "var(--accent)";
+  document.documentElement.style.setProperty("--pc", pc);
+  if(key!==currentKey){
+    document.querySelectorAll(".page").forEach(p=>p.hidden = p.dataset.key!==key);
+    document.querySelectorAll(".route a").forEach(a=>{ if(a.dataset.key===key) a.setAttribute("aria-current","page"); else a.removeAttribute("aria-current"); });
+    buildToc(key); currentKey=key;
+    document.getElementById("topTitle").textContent = (n.num?("Step "+n.num+" "):"")+n.title;
+    document.title = (n.num?("Step "+n.num+" "):"")+n.title+" | Snowflake 学習ガイド";
+    renderMermaid(key);
+  }
+  if(anchor){ const el=document.getElementById(anchor); if(el) el.scrollIntoView(); }
+  else window.scrollTo(0,0);
+  document.body.classList.remove("menu-open"); document.getElementById("menuBtn").setAttribute("aria-expanded","false");
+}
+function buildToc(key){
+  const toc=document.getElementById("toc");
+  const items=TOC[key]||[];
+  const li=t=>`<li><a href="#${t.id}" data-id="${t.id}">${t.name}</a>${t.children&&t.children.length?`<ul>${t.children.map(li).join("")}</ul>`:""}</li>`;
+  toc.innerHTML = items.length ? `<p>このページの目次</p><ul>${items.map(li).join("")}</ul>` : "";
+  if(observer) observer.disconnect();
+  const links=[...toc.querySelectorAll("a")];
+  observer=new IntersectionObserver(es=>{
+    es.forEach(e=>{ if(e.isIntersecting){ links.forEach(a=>a.classList.toggle("on", a.dataset.id===e.target.id)); } });
+  },{rootMargin:"-10% 0px -80% 0px"});
+  links.forEach(a=>{const el=document.getElementById(a.dataset.id); if(el) observer.observe(el);});
+}
+function route_(){
+  const h=decodeURIComponent(location.hash.slice(1));
+  if(!h){ show("overview"); return; }
+  const key=h.split("-")[0];
+  show(key, h.includes("-")?h:null);
+}
+window.addEventListener("hashchange", route_);
+window.addEventListener("load", ()=>renderMermaid(currentKey));
+route_();
+
+/* search over headings */
+const INDEX=[]; NAV.forEach(n=>{ (TOC[n.key]||[]).forEach(t=>{ INDEX.push({id:t.id,name:t.name,page:n}); (t.children||[]).forEach(c=>INDEX.push({id:c.id,name:c.name,page:n})); }); });
+const q=document.getElementById("q"), results=document.getElementById("results");
+q.addEventListener("input",()=>{
+  const s=q.value.trim().toLowerCase(); if(!s){results.innerHTML="";return;}
+  const hits=INDEX.filter(x=>x.name.toLowerCase().includes(s)).slice(0,30);
+  results.innerHTML = hits.length ? hits.map(x=>`<li><a href="#${x.id}">${x.name}<small>${x.page.num?("Step "+x.page.num+" "):""}${x.page.title}</small></a></li>`).join("")
+    : `<li class="brand-sub" style="padding:.35rem .5rem">「${q.value}」を含む見出しはありません</li>`;
+});
+
+/* case index filter */
+document.querySelectorAll(".filters .btn").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll(".filters .btn").forEach(x=>x.classList.toggle("on",x===b));
+  document.querySelectorAll(".case-card").forEach(c=>c.hidden = !!b.dataset.k && c.dataset.k!==b.dataset.k);
+});
+
+/* mobile menu */
+const menuBtn=document.getElementById("menuBtn");
+menuBtn.onclick=()=>{ const o=document.body.classList.toggle("menu-open"); menuBtn.setAttribute("aria-expanded", String(o)); };
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") document.body.classList.remove("menu-open"); });
+document.addEventListener("click",e=>{ if(document.body.classList.contains("menu-open") && !e.target.closest(".rail") && e.target!==menuBtn) document.body.classList.remove("menu-open"); });
+</script>
+</body>
+</html>
